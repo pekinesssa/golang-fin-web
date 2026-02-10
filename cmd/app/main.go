@@ -1,9 +1,9 @@
-package app 
+package app
 
-import(
+import (
 	"fmt"
 )
 
-func main(){
+func main() {
 	fmt.Println("hello1")
 }
