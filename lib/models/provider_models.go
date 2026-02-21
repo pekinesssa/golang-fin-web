@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"time"
 )
 
 type ProviderType string
@@ -18,7 +19,7 @@ type Provider interface {
 	GetPrice(ctx context.Context, ticker string) (float64, error)
 	GetAssetInfo(ctx context.Context, ticker string) (*AssetInfo, error)
 
-	HealthCheck(ctx context.Context) error
+	Ping(ctx context.Context) error
 }
 
 type AssetInfo struct {
@@ -27,4 +28,15 @@ type AssetInfo struct {
 	Exchange    string
 	Description string
 	Type        string
+}
+
+type PriceChange struct {
+	Symbol    string
+	Price     float64
+	Volume24  float64
+	Change24  float64
+	High24    float64
+	Low24     float64
+	Timestamp time.Time
+	Source    string
 }
