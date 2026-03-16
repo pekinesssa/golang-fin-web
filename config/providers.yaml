@@ -1,0 +1,28 @@
+providers:
+  - name: "coingecko"
+    enabled: true
+    type: "CRYPTO"
+    priority: 1
+    config:
+      base_url: "https://api.coingecko.com/api/v3"
+      endpoints:
+        price: "/simple/price?ids={ticker_lower}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true"
+      
+      ticker_format: ""
+      ticker_mapping:
+        BTC: "bitcoin"
+        ETH: "ethereum"
+        BNB: "binancecoin"
+        ADA: "cardano"
+        DOGE: "dogecoin"
+        SOL: "solana"
+        DOT: "polkadot"
+      
+      response_mapping:
+        price_path: "{ticker_lower}.usd"
+        volume24_path: "{ticker_lower}.usd_24h_vol"
+        change24_path: "{ticker_lower}.usd_24h_change"
+        json_path: true
+      
+      rate_limit:
+        requests_per_minute: 50

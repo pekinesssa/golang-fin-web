@@ -8,16 +8,28 @@ import (
 type ProviderType string
 
 const (
-	ProviderTypeStock = "STOCK"
+	ProviderTypeStock  = "STOCK"
+	ProviderTypeCrypto = "CRYPTO"
+	ProviderTypeBoth   = "BOTH"
+)
+
+type AssetType string
+
+const (
+	AssetTypeStock  = "STOCK"
+	AssetTypeCrypto = "CRYPTO"
+	AssetTypeETF    = "ETF"
+	AssetTypeForex  = "FOREX"
 )
 
 // Интерфейс для провайдера финансовых данных (делаем универсальный модуль, а потом адаптеры к АПИ)
 type Provider interface {
 	Name() string
 	Type() ProviderType
+	Priority() int
 
-	GetPrice(ctx context.Context, ticker string) (float64, error)
-	GetAssetInfo(ctx context.Context, ticker string) (*AssetInfo, error)
+	GetPrice(ctx context.Context, ticker string) (*Price, error)
+	GetMultiplePrices(ctx context.Context, tickers []string) (map[string]*Price, error)
 
 	Ping(ctx context.Context) error
 }
@@ -30,7 +42,7 @@ type AssetInfo struct {
 	Type        string
 }
 
-type PriceChange struct {
+type Price struct {
 	Symbol    string
 	Price     float64
 	Volume24  float64
