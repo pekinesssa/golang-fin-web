@@ -28,12 +28,17 @@ type ConfigurableAdapter struct {
 }
 
 type ResponseMapping struct {
-	PricePath    string
-	Volume24Path string
-	Change24Path string
-	High24Path   string
-	Low24Path    string
-	JSONPath     bool
+	PricePath         string
+	Volume24Path      string
+	Change24Path      string
+	ChangePct24Path   string
+	High24Path        string
+	Low24Path         string
+	OpenPath          string
+	PreviousClosePath string
+	MarketCapPath     string
+	SupplyPath        string
+	JSONPath          bool
 }
 
 func NewConfigurableAdapter(config models.ProviderConfig) (*ConfigurableAdapter, error) {
@@ -100,11 +105,26 @@ func parceResponceMapping(config map[string]interface{}) ResponseMapping {
 	if val, ok := config["change24_path"].(string); ok {
 		rm.Change24Path = val
 	}
+	if val, ok := config["change_pct24_path"].(string); ok {
+		rm.ChangePct24Path = val
+	}
 	if val, ok := config["high24_path"].(string); ok {
 		rm.High24Path = val
 	}
 	if val, ok := config["low24_path"].(string); ok {
 		rm.Low24Path = val
+	}
+	if val, ok := config["open_path"].(string); ok {
+		rm.OpenPath = val
+	}
+	if val, ok := config["previous_close_path"].(string); ok {
+		rm.PreviousClosePath = val
+	}
+	if val, ok := config["market_cap_path"].(string); ok {
+		rm.MarketCapPath = val
+	}
+	if val, ok := config["supply_path"].(string); ok {
+		rm.SupplyPath = val
 	}
 	if val, ok := config["json_path"].(bool); ok {
 		rm.JSONPath = val
@@ -277,6 +297,14 @@ func (a *ConfigurableAdapter) parsePrice(data []byte, apiTicker string, original
 			}
 		}
 
+		if a.responseMapping.ChangePct24Path != "" {
+			changePct24Field := a.preparePath(a.responseMapping.ChangePct24Path, apiTicker)
+			changePct24Value := gjson.GetBytes(data, changePct24Field)
+			if changePct24Value.Exists() {
+				price.ChangePct24 = changePct24Value.Float()
+			}
+		}
+
 		if a.responseMapping.High24Path != "" {
 			high24Field := a.preparePath(a.responseMapping.High24Path, apiTicker)
 			high24Value := gjson.GetBytes(data, high24Field)
@@ -292,6 +320,39 @@ func (a *ConfigurableAdapter) parsePrice(data []byte, apiTicker string, original
 				price.Low24 = low24Value.Float()
 			}
 		}
+
+		if a.responseMapping.OpenPath != "" {
+			openField := a.preparePath(a.responseMapping.OpenPath, apiTicker)
+			openValue := gjson.GetBytes(data, openField)
+			if openValue.Exists() {
+				price.Open = openValue.Float()
+			}
+		}
+
+		if a.responseMapping.PreviousClosePath != "" {
+			prevCloseField := a.preparePath(a.responseMapping.PreviousClosePath, apiTicker)
+			prevCloseValue := gjson.GetBytes(data, prevCloseField)
+			if prevCloseValue.Exists() {
+				price.PreviousClose = prevCloseValue.Float()
+			}
+		}
+
+		if a.responseMapping.MarketCapPath != "" {
+			marketCapField := a.preparePath(a.responseMapping.MarketCapPath, apiTicker)
+			marketCapValue := gjson.GetBytes(data, marketCapField)
+			if marketCapValue.Exists() {
+				price.MarketCap = marketCapValue.Float()
+			}
+		}
+
+		if a.responseMapping.SupplyPath != "" {
+			supplyField := a.preparePath(a.responseMapping.SupplyPath, apiTicker)
+			supplyValue := gjson.GetBytes(data, supplyField)
+			if supplyValue.Exists() {
+				price.Supply = supplyValue.Float()
+			}
+		}
+
 	} else {
 		var resultMap map[string]interface{}
 		if err := json.Unmarshal(data, &resultMap); err != nil {
@@ -313,6 +374,48 @@ func (a *ConfigurableAdapter) parsePrice(data []byte, apiTicker string, original
 		if a.responseMapping.Change24Path != "" {
 			if val, ok := resultMap[a.responseMapping.Change24Path]; ok {
 				price.Change24 = convertToFloat64(val)
+			}
+		}
+
+		if a.responseMapping.ChangePct24Path != "" {
+			if val, ok := resultMap[a.responseMapping.ChangePct24Path]; ok {
+				price.ChangePct24 = convertToFloat64(val)
+			}
+		}
+
+		if a.responseMapping.High24Path != "" {
+			if val, ok := resultMap[a.responseMapping.High24Path]; ok {
+				price.High24 = convertToFloat64(val)
+			}
+		}
+
+		if a.responseMapping.Low24Path != "" {
+			if val, ok := resultMap[a.responseMapping.Low24Path]; ok {
+				price.Low24 = convertToFloat64(val)
+			}
+		}
+
+		if a.responseMapping.OpenPath != "" {
+			if val, ok := resultMap[a.responseMapping.OpenPath]; ok {
+				price.Open = convertToFloat64(val)
+			}
+		}
+
+		if a.responseMapping.PreviousClosePath != "" {
+			if val, ok := resultMap[a.responseMapping.PreviousClosePath]; ok {
+				price.PreviousClose = convertToFloat64(val)
+			}
+		}
+
+		if a.responseMapping.MarketCapPath != "" {
+			if val, ok := resultMap[a.responseMapping.MarketCapPath]; ok {
+				price.MarketCap = convertToFloat64(val)
+			}
+		}
+
+		if a.responseMapping.SupplyPath != "" {
+			if val, ok := resultMap[a.responseMapping.SupplyPath]; ok {
+				price.Supply = convertToFloat64(val)
 			}
 		}
 	}

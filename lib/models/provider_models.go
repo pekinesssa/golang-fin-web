@@ -11,6 +11,7 @@ const (
 	ProviderTypeStock  = "STOCK"
 	ProviderTypeCrypto = "CRYPTO"
 	ProviderTypeBoth   = "BOTH"
+	ЗProviderTypeForex = "FOREX"
 )
 
 type AssetType string
@@ -43,12 +44,20 @@ type AssetInfo struct {
 }
 
 type Price struct {
-	Symbol    string
-	Price     float64
-	Volume24  float64
-	Change24  float64
-	High24    float64
-	Low24     float64
+	Symbol string
+	Price  float64
+
+	Volume24    float64
+	Change24    float64
+	ChangePct24 float64
+	High24      float64
+	Low24       float64
+
+	Open          float64
+	PreviousClose float64
+	MarketCap     float64
+	Supply        float64 // Для криптовалют
+
 	Timestamp time.Time
 	Source    string
 }

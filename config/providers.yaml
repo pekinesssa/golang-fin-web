@@ -6,7 +6,7 @@ providers:
     config:
       base_url: "https://api.coingecko.com/api/v3"
       endpoints:
-        price: "/simple/price?ids={ticker_lower}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true"
+        price: "/simple/price?ids={ticker_lower}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true"
       
       ticker_format: ""
       ticker_mapping:
@@ -14,15 +14,180 @@ providers:
         ETH: "ethereum"
         BNB: "binancecoin"
         ADA: "cardano"
+        XRP: "ripple"
         DOGE: "dogecoin"
         SOL: "solana"
         DOT: "polkadot"
+        MATIC: "matic-network"
+        LINK: "chainlink"
+        UNI: "uniswap"
+        AVAX: "avalanche-2"
+        LTC: "litecoin"
+        ATOM: "cosmos"
+        XLM: "stellar"
+        ALGO: "algorand"
+        VET: "vechain"
+        ICP: "internet-computer"
+        FIL: "filecoin"
+        TRX: "tron"
+        ETC: "ethereum-classic"
+        AAVE: "aave"
+        MKR: "maker"
+        THETA: "theta-token"
+        XMR: "monero"
       
       response_mapping:
         price_path: "{ticker_lower}.usd"
         volume24_path: "{ticker_lower}.usd_24h_vol"
         change24_path: "{ticker_lower}.usd_24h_change"
+        market_cap_path: "{ticker_lower}.usd_market_cap"
+        last_updated_path: "{ticker_lower}.last_updated_at"
         json_path: true
       
       rate_limit:
-        requests_per_minute: 50
+        requests_per_minute: 30  
+
+  - name: "cryptocompare"
+    enabled: true
+    type: "CRYPTO"
+    priority: 2
+    config:
+      base_url: "https://min-api.cryptocompare.com/data"
+      endpoints:
+        price: "/pricemultifull?fsyms={ticker}&tsyms=USD"
+      
+      ticker_format: ""
+      
+      response_mapping:
+        price_path: "RAW.{ticker}.USD.PRICE"
+        volume24_path: "RAW.{ticker}.USD.TOTALVOLUME24HTO"
+        change24_path: "RAW.{ticker}.USD.CHANGEPCT24HOUR"
+        high24_path: "RAW.{ticker}.USD.HIGH24HOUR"
+        low24_path: "RAW.{ticker}.USD.LOW24HOUR"
+        market_cap_path: "RAW.{ticker}.USD.MKTCAP"
+        json_path: true
+      
+      rate_limit:
+        requests_per_second: 1
+  
+  
+
+  - name: "alphavantage"
+    enabled: true
+    type: "STOCK"
+    priority: 1
+    api_key: "${ALPHA_VANTAGE_API_KEY}"  # Получить ключ
+    config:
+      base_url: "https://www.alphavantage.co/query"
+      endpoints:
+        price: "?function=GLOBAL_QUOTE&symbol={ticker}&apikey={api_key}"
+      
+      ticker_format: ""
+      
+      response_mapping:
+        price_path: "Global Quote.05. price"
+        volume_path: "Global Quote.06. volume"
+        change_path: "Global Quote.09. change"
+        change_percent_path: "Global Quote.10. change percent"
+        high_path: "Global Quote.03. high"
+        low_path: "Global Quote.04. low"
+        open_path: "Global Quote.02. open"
+        prev_close_path: "Global Quote.08. previous close"
+        json_path: true
+      
+      rate_limit:
+        requests_per_minute: 5 
+  
+  - name: "twelvedata"
+    enabled: false  # Требует API key
+    type: "STOCK"
+    priority: 2
+    api_key: "${TWELVE_DATA_API_KEY}"  # https://twelvedata.com/
+    config:
+      base_url: "https://api.twelvedata.com"
+      endpoints:
+        price: "/quote?symbol={ticker}&apikey={api_key}"
+      
+      ticker_format: ""
+      
+      response_mapping:
+        price_path: "close"
+        volume_path: "volume"
+        change_path: "change"
+        change_percent_path: "percent_change"
+        high_path: "high"
+        low_path: "low"
+        open_path: "open"
+        prev_close_path: "previous_close"
+        json_path: false
+      
+      rate_limit:
+        requests_per_minute: 8  # Бесплатный: 800/day
+  
+  - name: "finnhub"
+    enabled: false  # Требует API key
+    type: "STOCK"
+    priority: 3
+    api_key: "${FINNHUB_API_KEY}"  # https://finnhub.io/
+    config:
+      base_url: "https://finnhub.io/api/v1"
+      endpoints:
+        price: "/quote?symbol={ticker}&token={api_key}"
+      
+      ticker_format: ""
+      
+      response_mapping:
+        price_path: "c"      # current price
+        high_path: "h"       # high
+        low_path: "l"        # low
+        open_path: "o"       # open
+        prev_close_path: "pc" # previous close
+        change_path: "d"     # change
+        change_percent_path: "dp" # change percent
+        json_path: false
+      
+      rate_limit:
+        requests_per_minute: 60  # Бесплатный: 60/min
+  
+  - name: "yahoo_finance"
+    enabled: true
+    type: "STOCK"
+    priority: 4
+    config:
+      base_url: "https://query1.finance.yahoo.com/v8/finance"
+      endpoints:
+        price: "/chart/{ticker}?interval=1d&range=1d"
+      
+      ticker_format: ""
+      
+      response_mapping:
+        price_path: "chart.result.0.meta.regularMarketPrice"
+        volume_path: "chart.result.0.meta.regularMarketVolume"
+        high_path: "chart.result.0.meta.regularMarketDayHigh"
+        low_path: "chart.result.0.meta.regularMarketDayLow"
+        open_path: "chart.result.0.meta.regularMarketOpen"
+        prev_close_path: "chart.result.0.meta.previousClose"
+        json_path: true
+      
+      rate_limit:
+        requests_per_second: 2
+  
+
+  - name: "fixer"
+    enabled: false  # Требует API key
+    type: "FOREX"
+    priority: 1
+    api_key: "${FIXER_API_KEY}"  # https://fixer.io/
+    config:
+      base_url: "https://api.apilayer.com/fixer"
+      endpoints:
+        price: "/latest?base={ticker}&apikey={api_key}"
+      
+      ticker_format: ""
+      
+      response_mapping:
+        price_path: "rates.USD"
+        json_path: true
+      
+      rate_limit:
+        requests_per_month: 100  # Бесплатный план
