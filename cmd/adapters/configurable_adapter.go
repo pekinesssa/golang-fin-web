@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"golang-fin-web/lib/models"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"sync"
 
 	"github.com/tidwall/gjson"
 	"golang.org/x/time/rate"
@@ -25,6 +28,10 @@ type ConfigurableAdapter struct {
 	tickerMapping   map[string]string
 	responseMapping ResponseMapping
 	requestParams   map[string]string
+
+	enableDynamicSearch bool
+	searchCache         map[string]string
+	searchCacheMutex    sync.RWMutex
 }
 
 type ResponseMapping struct {
@@ -54,15 +61,17 @@ func NewConfigurableAdapter(config models.ProviderConfig) (*ConfigurableAdapter,
 	providerType := models.ProviderType(config.Type)
 	base := NewBaseAdapter(config.Name, providerType, config.Priority)
 	adapter := &ConfigurableAdapter{
-		BaseAdapter:     base,
-		baseURL:         baseURL,
-		endpoints:       parceEndpoints(config.GetConfigMap("endpoints")),
-		authType:        parceAuthType(config.GetConfigString("auth_type")),
-		authConfig:      parceAuthConfig(config.GetConfigMap("auth_config")),
-		tickerFormat:    config.GetConfigString("ticker_format"),
-		tickerMapping:   parceTickerMapping(config.GetConfigMap("ticker_mapping")),
-		responseMapping: parceResponceMapping(config.GetConfigMap("response_mapping")),
-		requestParams:   parceRequestParams(config.GetConfigMap("request_params")),
+		BaseAdapter:         base,
+		baseURL:             baseURL,
+		endpoints:           parceEndpoints(config.GetConfigMap("endpoints")),
+		authType:            parceAuthType(config.GetConfigString("auth_type")),
+		authConfig:          parceAuthConfig(config.GetConfigMap("auth_config")),
+		tickerFormat:        config.GetConfigString("ticker_format"),
+		tickerMapping:       parceTickerMapping(config.GetConfigMap("ticker_mapping")),
+		responseMapping:     parceResponceMapping(config.GetConfigMap("response_mapping")),
+		requestParams:       parceRequestParams(config.GetConfigMap("request_params")),
+		enableDynamicSearch: config.GetConfigBool("enable_dynamic_search"),
+		searchCache:         make(map[string]string),
 	}
 
 	adapter.SetBaseURL(baseURL)
@@ -203,17 +212,22 @@ func (a *ConfigurableAdapter) preparePath(path string, ticker string) string {
 	return path
 }
 
-func (a *ConfigurableAdapter) formatTicker(ticker string) string {
+func (a *ConfigurableAdapter) formatTicker(ctx context.Context, ticker string) (string, error) {
 	if mapped, ok := a.tickerMapping[ticker]; ok {
-		return mapped
+		return mapped, nil
 	}
-	if a.tickerFormat == "" {
-		return ticker
+	if a.tickerFormat != "" {
+		formatted := strings.ReplaceAll(a.tickerFormat, "{ticker}", ticker)
+		formatted = strings.ReplaceAll(formatted, "{ticker_upper}", strings.ToUpper(ticker))
+		formatted = strings.ReplaceAll(formatted, "{ticker_lower}", strings.ToLower(ticker))
+		return formatted, nil
 	}
-	formatted := strings.ReplaceAll(a.tickerFormat, "{ticker}", ticker)
-	formatted = strings.ReplaceAll(formatted, "{ticker_upper}", strings.ToUpper(ticker))
-	formatted = strings.ReplaceAll(formatted, "{ticker_lower}", strings.ToLower(ticker))
-	return formatted
+
+	if a.enableDynamicSearch {
+		return a.searchTicker(ctx, ticker)
+	}
+
+	return ticker, nil
 }
 
 func convertToFloat64(val interface{}) float64 {
@@ -235,7 +249,10 @@ func convertToFloat64(val interface{}) float64 {
 }
 
 func (a *ConfigurableAdapter) GetPrice(ctx context.Context, ticker string) (*models.Price, error) {
-	apiTicker := a.formatTicker(ticker)
+	apiTicker, err := a.formatTicker(ctx, ticker)
+	if err != nil {
+		return nil, fmt.Errorf("error formatting ticker: %w", err)
+	}
 	endpoint := a.endpoints["price"]
 	if endpoint == "" {
 		return nil, fmt.Errorf("price endpoint not configured for provider %s", a.Name())
@@ -435,4 +452,67 @@ func (a *ConfigurableAdapter) GetMultiplePrices(ctx context.Context, tickers []s
 	}
 
 	return prices, nil
+}
+
+func (a *ConfigurableAdapter) searchTicker(ctx context.Context, ticker string) (string, error) {
+	a.searchCacheMutex.RLock()
+	if tickerID, ok := a.searchCache[ticker]; ok {
+		a.searchCacheMutex.RUnlock()
+		return tickerID, nil
+	}
+	a.searchCacheMutex.RUnlock()
+
+	if mapped, ok := a.tickerMapping[ticker]; ok {
+		a.searchCacheMutex.Lock()
+		a.searchCache[ticker] = mapped
+		a.searchCacheMutex.Unlock()
+		return mapped, nil
+	}
+
+	if !a.enableDynamicSearch {
+		return "", fmt.Errorf("ticker %s not found in mapping and dynamic search is disabled", ticker)
+	}
+
+	searchEndpoint := a.endpoints["search"]
+	if searchEndpoint == "" {
+		return "", fmt.Errorf("search endpoint not configured for provider %s", a.Name())
+	}
+
+	searchURL := a.baseURL + searchEndpoint
+	searchURL = strings.ReplaceAll(searchURL, "{ticker}", ticker)
+
+	resp, err := a.MakeRequest(ctx, http.MethodGet, searchURL)
+	if err != nil {
+		return "", fmt.Errorf("error making search request to %s: %w", searchURL, err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("non-200 response from %s: %d - %s", searchURL, resp.StatusCode, string(body))
+	}
+
+	var searchResults struct {
+		Results []struct {
+			Ticker string `json:"ticker"`
+			ID     string `json:"id"`
+			Name   string `json:"name"`
+		} `json:"results"`
+	}
+	if err := json.Unmarshal(body, &searchResults); err != nil {
+		return "", fmt.Errorf("error unmarshaling search response: %w", err)
+	}
+
+	for _, result := range searchResults.Results {
+		if strings.EqualFold(result.Ticker, ticker) || strings.EqualFold(result.Name, ticker) || strings.EqualFold(result.ID, ticker) {
+			a.searchCacheMutex.Lock()
+			a.searchCache[ticker] = result.ID
+			a.searchCacheMutex.Unlock()
+
+			log.Printf("Dynamic search found ticker %s for %s, caching result", result.ID, ticker)
+			return result.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("ticker %s not found in search results", ticker)
 }

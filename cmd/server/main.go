@@ -38,6 +38,28 @@ func main() {
 	fmt.Println(" Fetching crypto prices...")
 
 	cryptoTickers := []string{"BTC", "ETH", "SOL", "ADA", "DOT"}
+	exoticTokens := []string{
+		"PEPE",
+		"SHIB",
+		"FLOKI",
+		"APE",
+		"SAND",
+		"MANA",
+		"AXS",
+		"GMT",
+		"APT",
+		"OP",
+	}
+	for _, ticker := range exoticTokens {
+		price, err := marketDataService.GetCryptoPrice(ctx, ticker)
+		if err != nil {
+			fmt.Printf("	NOT OK %s: %v\n", ticker, err)
+			continue
+		}
+
+		fmt.Printf("	OK %s: $%.6f (from %s)\n", ticker, price.Price, price.Source)
+		time.Sleep(5 * time.Second)
+	}
 
 	for _, ticker := range cryptoTickers {
 		price, err := marketDataService.GetCryptoPrice(ctx, ticker)

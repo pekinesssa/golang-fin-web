@@ -77,3 +77,12 @@ func (c *ProviderConfig) GetConfigMap(key string) map[string]interface{} {
 	}
 	return make(map[string]interface{})
 }
+
+func (c *ProviderConfig) GetConfigBool(key string) bool {
+	if val, ok := c.Config[key]; ok {
+		if b, ok := val.(bool); ok {
+			return b
+		}
+	}
+	return false
+}
