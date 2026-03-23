@@ -4,8 +4,8 @@ package service
 import (
 	"context"
 	"fmt"
-	factory "golang-fin-web/internal/adapters/lib"
-	"golang-fin-web/internal/adapters/models"
+	factory "golang-fin-web/internal/adapters/marketdata/lib"
+	"golang-fin-web/internal/adapters/marketdata/models"
 )
 
 type MarketDataService struct {
