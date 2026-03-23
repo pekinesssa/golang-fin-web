@@ -1,8 +1,8 @@
 package factory
 
 import (
-	"golang-fin-web/cmd/adapters"
-	"golang-fin-web/lib/models"
+	adapters "golang-fin-web/internal/adapters/marketdata"
+	"golang-fin-web/internal/adapters/marketdata/models"
 )
 
 type ProviderFactory struct {

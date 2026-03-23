@@ -3,7 +3,7 @@ package factory
 import (
 	"context"
 	"fmt"
-	"golang-fin-web/lib/models"
+	"golang-fin-web/internal/adapters/marketdata/models"
 	"log"
 	"os"
 	"sort"

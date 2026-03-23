@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"golang-fin-web/lib/models"
+	"golang-fin-web/internal/adapters/marketdata/models"
 	"golang-fin-web/service"
 	"log"
 	"time"
@@ -50,6 +50,7 @@ func main() {
 		"APT",
 		"OP",
 	}
+
 	for _, ticker := range exoticTokens {
 		price, err := marketDataService.GetCryptoPrice(ctx, ticker)
 		if err != nil {

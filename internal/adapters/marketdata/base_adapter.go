@@ -2,7 +2,7 @@ package adapters
 
 import (
 	"context"
-	"golang-fin-web/lib/models"
+	"golang-fin-web/internal/adapters/marketdata/models"
 	"net/http"
 	"time"
 

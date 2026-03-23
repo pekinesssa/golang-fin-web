@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang-fin-web/lib/models"
+	"golang-fin-web/internal/adapters/marketdata/models"
 	"io"
 	"log"
 	"net/http"
